@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Sad Are You? — Movie Recommender</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090f;
+    --card: #111118;
+    --border: rgba(255,255,255,0.08);
+    --purple: #8B5CF6;
+    --pink: #EC4899;
+    --blue: #3B82F6;
+    --gold: #F59E0B;
+    --red: #EF4444;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::after { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9999; }
+  .bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(100px); transition: background 1.5s ease, opacity 1.5s ease; opacity: 0; }
+  .orb-1 { width: 700px; height: 700px; top: -200px; left: -150px; }
+  .orb-2 { width: 600px; height: 600px; bottom: -150px; right: -150px; }
+  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 70px 0 40px; text-align: center; }
+  .eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+  .main-title { font-family: 'Playfair Display', serif; font-size: clamp(48px, 9vw, 90px); line-height: 1.02; margin-bottom: 20px; background: linear-gradient(135deg, #fff 0%, #8B5CF6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
+  .mood-section { padding: 50px 0; text-align: center; }
+  .mood-question { font-family: 'Playfair Display', serif; font-size: clamp(20px, 3.5vw, 30px); margin-bottom: 44px; font-style: italic; }
+  .slider-wrap { position: relative; max-width: 600px; margin: 0 auto 30px; padding: 0 20px; }
+  .mood-slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: var(--border); outline: none; cursor: pointer; }
+  .mood-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: var(--thumb-color, var(--purple)); cursor: pointer; box-shadow: 0 0 24px var(--thumb-color, var(--purple)); border: 3px solid rgba(255,255,255,0.25); transition: background 0.5s, box-shadow 0.5s; }
+  .mood-labels { display: flex; justify-content: space-between; margin-top: 14px; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .mood-display { margin: 30px auto; max-width: 500px; padding: 28px 36px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; transition: border-color 0.5s; }
+  .mood-emoji { font-size: 52px; display: block; margin-bottom: 10px; }
+  .mood-name { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 6px; transition: color 0.5s; }
+  .mood-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .find-btn { margin-top: 30px; padding: 16px 52px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; letter-spacing: 1px; background: var(--purple); color: white; border: none; border-radius: 3px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; }
+  .find-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(139,92,246,0.4); }
+  .insight-bar { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 22px 28px; margin: 0 0 36px; display: none; align-items: center; gap: 16px; }
+  .insight-bar.visible { display: flex; }
+  .insight-icon { font-size: 26px; flex-shrink: 0; }
+  .insight-text { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .insight-text strong { color: var(--text); }
+  .results-section { padding: 20px 0 60px; display: none; }
+  .results-section.visible { display: block; }
+  .results-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .results-title { font-family: 'Playfair Display', serif; font-size: 26px; }
+  .results-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 2px; }
+  .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+  .movie-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; animation: fadeUp 0.5s ease forwards; opacity: 0; }
+  .movie-card:hover { transform: translateY(-6px); border-color: var(--active-color, var(--purple)); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* POSTER STYLES */
+  .poster-wrap { width: 100%; aspect-ratio: 2/3; background: #1a1a2e; overflow: hidden; position: relative; }
+  .movie-poster { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
+  .movie-card:hover .movie-poster { transform: scale(1.04); }
+  .poster-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 12px; text-align: center; padding: 12px; }
+  .poster-fallback .film-icon { font-size: 36px; }
+
+  .movie-info { padding: 13px; }
+  .movie-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; line-height: 1.3; }
+  .movie-meta { display: flex; justify-content: space-between; align-items: center; }
+  .movie-year { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .movie-rating { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold); }
+  .movie-genre { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 8px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; animation: fadeUp 0.3s ease; }
+  .modal-inner { display: grid; grid-template-columns: 200px 1fr; }
+  .modal-poster-wrap { position: relative; background: #1a1a2e; border-radius: 8px 0 0 8px; overflow: hidden; }
+  .modal-poster { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 300px; }
+  .modal-content { padding: 30px; }
+  .modal-genre { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--purple); margin-bottom: 10px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 24px; margin-bottom: 6px; line-height: 1.2; }
+  .modal-meta { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .modal-rating { display: inline-flex; align-items: center; gap: 6px; background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); padding: 5px 12px; border-radius: 2px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); margin-bottom: 18px; }
+  .modal-overview { font-size: 14px; line-height: 1.75; color: var(--muted); margin-bottom: 18px; }
+  .reddit-block { background: rgba(255,69,0,0.08); border: 1px solid rgba(255,69,0,0.2); border-radius: 4px; padding: 14px; margin-bottom: 16px; }
+  .reddit-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #FF4500; margin-bottom: 8px; text-transform: uppercase; }
+  .reddit-quote { font-size: 13px; font-style: italic; color: var(--text); line-height: 1.6; }
+  .modal-close { float: right; background: none; border: 1px solid var(--border); color: var(--muted); width: 30px; height: 30px; border-radius: 2px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .modal-close:hover { border-color: var(--text); color: var(--text); }
+  .chart-section { padding: 60px 0; border-top: 1px solid var(--border); display: none; }
+  .chart-section.visible { display: block; }
+  .chart-title { font-family: 'Playfair Display', serif; font-size: 26px; margin-bottom: 6px; }
+  .chart-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 14px; }
+  .bar-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); width: 140px; flex-shrink: 0; text-align: right; }
+  .bar-track { flex: 1; height: 34px; background: rgba(255,255,255,0.04); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 1s cubic-bezier(0.4,0,0.2,1); width: 0; display: flex; align-items: center; padding-left: 12px; }
+  .bar-value { font-family: 'DM Mono', monospace; font-size: 12px; color: white; font-weight: 500; }
+  footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
+  .footer-note { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  @media (max-width: 600px) {
+    .modal-inner { grid-template-columns: 1fr; }
+    .modal-poster { min-height: 220px; max-height: 260px; border-radius: 8px 8px 0 0; }
+    .movie-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1" id="orb1"></div>
+  <div class="orb orb-2" id="orb2"></div>
+</div>
+
+<div class="container">
+  <header>
+    <div class="eyebrow">📊 Data Analysis Project · IMDb Top 1000</div>
+    <h1 class="main-title">How Sad<br>Are You?</h1>
+    <p class="subtitle">Rate your current mood and discover movies that match your emotional wavelength — backed by real IMDb data.</p>
+  </header>
+
+  <section class="mood-section">
+    <p class="mood-question">"How are you feeling right now?"</p>
+    <div class="slider-wrap">
+      <input type="range" min="1" max="5" value="3" class="mood-slider" id="moodSlider">
+      <div class="mood-labels">
+        <span>I'm fine 😊</span>
+        <span>Kinda meh</span>
+        <span>Not great</span>
+        <span>Pretty sad</span>
+        <span>Destroyed 💀</span>
+      </div>
+    </div>
+    <div class="mood-display" id="moodDisplay">
+      <span class="mood-emoji" id="moodEmoji">😐</span>
+      <div class="mood-name" id="moodName">Kinda Meh</div>
+      <div class="mood-desc" id="moodDesc">You're somewhere in the middle. A quiet drama will hit just right tonight.</div>
+    </div>
+    <br>
+    <button class="find-btn" id="findBtn">Find My Movies →</button>
+  </section>
+
+  <div class="insight-bar" id="insightBar">
+    <div class="insight-icon">💡</div>
+    <div class="insight-text" id="insightText"></div>
+  </div>
+
+  <section class="results-section" id="resultsSection">
+    <div class="results-header">
+      <div class="results-title" id="resultsTitle">Your Movies</div>
+      <div class="results-count" id="resultsCount"></div>
+    </div>
+    <div class="movie-grid" id="movieGrid"></div>
+  </section>
+
+  <section class="chart-section" id="chartSection">
+    <div class="chart-title">Does sadness = better movies?</div>
+    <div class="chart-sub">Average IMDb rating per sadness tier — from feel-good to devastating</div>
+    <div class="bar-chart" id="barChart"></div>
+  </section>
+
+  <footer>
+    <div class="footer-note">Data source: IMDb Top 1000 · Kaggle Dataset · Built for Codédex Monthly Challenge</div>
+  </footer>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-inner">
+      <div class="modal-poster-wrap">
+        <img class="modal-poster" id="modalPoster" src="" alt="">
+      </div>
+      <div class="modal-content">
+        <button class="modal-close" id="modalClose">✕</button>
+        <div class="modal-genre" id="modalGenre"></div>
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div class="modal-rating" id="modalRating"></div>
+        <div class="modal-overview" id="modalOverview"></div>
+        <div class="reddit-block">
+          <div class="reddit-label">🔴 Reddit Says</div>
+          <div class="reddit-quote" id="modalReddit"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MOVIES = [{"title": "Inception", "year": "2010", "rating": 8.8, "genre": "Action, Adventure, Sci-Fi", "overview": "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.", "director": "Christopher Nolan", "poster": "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Il buono, il brutto, il cattivo", "year": "1966", "rating": 8.8, "genre": "Western", "overview": "A bounty hunting scam joins two men in an uneasy alliance against a third in a race to find a fortune in gold buried in a remote cemetery.", "director": "Sergio Leone", "poster": "https://m.media-amazon.com/images/M/MV5BOTQ5NDI3MTI4MF5BMl5BanBnXkFtZTgwNDQ4ODE5MDE@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "The Matrix", "year": "1999", "rating": 8.7, "genre": "Action, Sci-Fi", "overview": "When a beautiful stranger leads computer hacker Neo to a forbidding underworld, he discovers the shocking truth--the life he knows is the elaborate deception of...", "director": "Lana Wachowski", "poster": "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Star Wars: Episode V - The Empire Strikes Back", "year": "1980", "rating": 8.7, "genre": "Action, Adventure, Fantasy", "overview": "After the Rebels are brutally overpowered by the Empire on the ice planet Hoth, Luke Skywalker begins Jedi training with Yoda, while his friends are pursued by ...", "director": "Irvin Kershner", "poster": "https://m.media-amazon.com/images/M/MV5BYmU1NDRjNDgtMzhiMi00NjZmLTg5NGItZDNiZjU5NTU4OTE0XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Sen to Chihiro no kamikakushi", "year": "2001", "rating": 8.6, "genre": "Animation, Adventure, Family", "overview": "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into b...", "director": "Hayao Miyazaki", "poster": "https://m.media-amazon.com/images/M/MV5BMjlmZmI5MDctNDE2YS00YWE0LWE5ZWItZDBhYWQ0NTcxNWRhXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Star Wars", "year": "1977", "rating": 8.6, "genre": "Action, Adventure, Fantasy", "overview": "Luke Skywalker joins forces with a Jedi Knight, a cocky pilot, a Wookiee and two droids to save the galaxy from the Empire's world-destroying battle station, wh...", "director": "George Lucas", "poster": "https://m.media-amazon.com/images/M/MV5BNzVlY2MwMjktM2E4OS00Y2Y3LWE3ZjctYzhkZGM3YzA1ZWM2XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "The Usual Suspects", "year": "1995", "rating": 8.5, "genre": "Crime, Mystery, Thriller", "overview": "A sole survivor tells of the twisty events leading up to a horrific gun battle on a boat, which began when five criminals met at a seemingly random police lineu...", "director": "Bryan Singer", "poster": "https://m.media-amazon.com/images/M/MV5BYTViNjMyNmUtNDFkNC00ZDRlLThmMDUtZDU2YWE4NGI2ZjVmXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Terminator 2: Judgment Day", "year": "1991", "rating": 8.5, "genre": "Action, Sci-Fi", "overview": "A cyborg, identical to the one who failed to kill Sarah Connor, must now protect her teenage son, John Connor, from a more advanced and powerful cyborg.", "director": "James Cameron", "poster": "https://m.media-amazon.com/images/M/MV5BMGU2NzRmZjUtOGUxYS00ZjdjLWEwZWItY2NlM2JhNjkxNTFmXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 1}, {"title": "Gisaengchung", "year": "2019", "rating": 8.6, "genre": "Comedy, Drama, Thriller", "overview": "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.", "director": "Bong Joon Ho", "poster": "https://m.media-amazon.com/images/M/MV5BYWZjMjk3ZTItODQ2ZC00NTY5LWE0ZDYtZTI3MjcwN2Q5NTVkXkEyXkFqcGdeQXVyODk4OTc3MTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "Modern Times", "year": "1936", "rating": 8.5, "genre": "Comedy, Drama, Family", "overview": "The Tramp struggles to live in modern industrial society with the help of a young homeless woman.", "director": "Charles Chaplin", "poster": "https://m.media-amazon.com/images/M/MV5BYjJiZjMzYzktNjU0NS00OTkxLWEwYzItYzdhYWJjN2QzMTRlL2ltYWdlL2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "3 Idiots", "year": "2009", "rating": 8.4, "genre": "Comedy, Drama", "overview": "Two friends are searching for their long lost companion. They revisit their college days and recall the memories of their friend who inspired them to think diff...", "director": "Rajkumar Hirani", "poster": "https://m.media-amazon.com/images/M/MV5BNTkyOGVjMGEtNmQzZi00NzFlLTlhOWQtODYyMDc2ZGJmYzFhXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "The Sting", "year": "1973", "rating": 8.3, "genre": "Comedy, Crime, Drama", "overview": "Two grifters team up to pull off the ultimate con.", "director": "George Roy Hill", "poster": "https://m.media-amazon.com/images/M/MV5BNGU3NjQ4YTMtZGJjOS00YTQ3LThmNmItMTI5MDE2ODI3NzY3XkEyXkFqcGdeQXVyMjUzOTY1NTc@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "The Kid", "year": "1921", "rating": 8.3, "genre": "Comedy, Drama, Family", "overview": "The Tramp cares for an abandoned child, but events put that relationship in jeopardy.", "director": "Charles Chaplin", "poster": "https://m.media-amazon.com/images/M/MV5BZjhhMThhNDItNTY2MC00MmU1LTliNDEtNDdhZjdlNTY5ZDQ1XkEyXkFqcGdeQXVyNjc1NTYyMjg@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "Chhichhore", "year": "2019", "rating": 8.2, "genre": "Comedy, Drama", "overview": "A tragic incident forces Anirudh, a middle-aged man, to take a trip down memory lane and reminisce his college days along with his friends, who were labelled as...", "director": "Nitesh Tiwari", "poster": "https://m.media-amazon.com/images/M/MV5BYjg2ZDI2YTYtN2EwYi00YWI5LTgyMWQtMWFkYmE3NmJkOGVhXkEyXkFqcGdeQXVyODE5NzE3OTE@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "Three Billboards Outside Ebbing, Missouri", "year": "2017", "rating": 8.2, "genre": "Comedy, Crime, Drama", "overview": "A mother personally challenges the local authorities to solve her daughter's murder when they fail to catch the culprit.", "director": "Martin McDonagh", "poster": "https://m.media-amazon.com/images/M/MV5BMjI0ODcxNzM1N15BMl5BanBnXkFtZTgwMzIwMTEwNDI@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "Queen", "year": "2013", "rating": 8.2, "genre": "Adventure, Comedy, Drama", "overview": "A Delhi girl from a traditional family sets out on a solo honeymoon after her marriage gets cancelled.", "director": "Vikas Bahl", "poster": "https://m.media-amazon.com/images/M/MV5BNWYyOWRlOWItZWM5MS00ZjJkLWI0MTUtYTE3NTI5MDAwYjgyXkEyXkFqcGdeQXVyODE5NzE3OTE@._V1_UX400_CR0,0,400,600.jpg", "sadness": 2}, {"title": "The Shawshank Redemption", "year": "1994", "rating": 9.3, "genre": "Drama", "overview": "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.", "director": "Frank Darabont", "poster": "https://m.media-amazon.com/images/M/MV5BMDFkYTc0MGEtZmNhMC00ZDIzLWFmNTEtODM1ZmRlYWMwMWFmXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "The Godfather", "year": "1972", "rating": 9.2, "genre": "Crime, Drama", "overview": "An organized crime dynasty's aging patriarch transfers control of his clandestine empire to his reluctant son.", "director": "Francis Ford Coppola", "poster": "https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "The Dark Knight", "year": "2008", "rating": 9.0, "genre": "Action, Crime, Drama", "overview": "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of hi...", "director": "Christopher Nolan", "poster": "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "The Godfather: Part II", "year": "1974", "rating": 9.0, "genre": "Crime, Drama", "overview": "The early life and career of Vito Corleone in 1920s New York City is portrayed, while his son, Michael, expands and tightens his grip on the family crime syndic...", "director": "Francis Ford Coppola", "poster": "https://m.media-amazon.com/images/M/MV5BMWMwMGQzZTItY2JlNC00OWZiLWIyMDctNDk2ZDQ2YjRjMWQ0XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "12 Angry Men", "year": "1957", "rating": 9.0, "genre": "Crime, Drama", "overview": "A jury holdout attempts to prevent a miscarriage of justice by forcing his colleagues to reconsider the evidence.", "director": "Sidney Lumet", "poster": "https://m.media-amazon.com/images/M/MV5BMWU4N2FjNzYtNTVkNC00NzQ0LTg0MjAtYTJlMjFhNGUxZDFmXkEyXkFqcGdeQXVyNjc1NTYyMjg@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "The Lord of the Rings: The Return of the King", "year": "2003", "rating": 8.9, "genre": "Action, Adventure, Drama", "overview": "Gandalf and Aragorn lead the World of Men against Sauron's army to draw his gaze from Frodo and Sam as they approach Mount Doom with the One Ring.", "director": "Peter Jackson", "poster": "https://m.media-amazon.com/images/M/MV5BNzA5ZDNlZWMtM2NhNS00NDJjLTk4NDItYTRmY2EwMWZlMTY3XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "Pulp Fiction", "year": "1994", "rating": 8.9, "genre": "Crime, Drama", "overview": "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.", "director": "Quentin Tarantino", "poster": "https://m.media-amazon.com/images/M/MV5BNGNhMDIzZTUtNTBlZi00MTRlLWFjM2ItYzViMjE3YzI5MjljXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "Fight Club", "year": "1999", "rating": 8.8, "genre": "Drama", "overview": "An insomniac office worker and a devil-may-care soapmaker form an underground fight club that evolves into something much, much more.", "director": "David Fincher", "poster": "https://m.media-amazon.com/images/M/MV5BMmEzNTkxYjQtZTc0MC00YTVjLTg5ZTEtZWMwOWVlYzY0NWIwXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 3}, {"title": "Forrest Gump", "year": "1994", "rating": 8.8, "genre": "Drama, Romance", "overview": "The presidencies of Kennedy and Johnson, the events of Vietnam, Watergate and other historical events unfold through the perspective of an Alabama man with an I...", "director": "Robert Zemeckis", "poster": "https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "Goodfellas", "year": "1990", "rating": 8.7, "genre": "Biography, Crime, Drama", "overview": "The story of Henry Hill and his life in the mob, covering his relationship with his wife Karen Hill and his mob partners Jimmy Conway and Tommy DeVito in the It...", "director": "Martin Scorsese", "poster": "https://m.media-amazon.com/images/M/MV5BY2NkZjEzMDgtN2RjYy00YzM1LWI4ZmQtMjIwYjFjNmI3ZGEwXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "La vita \u00e8 bella", "year": "1997", "rating": 8.6, "genre": "Comedy, Drama, Romance", "overview": "When an open-minded Jewish librarian and his son become victims of the Holocaust, he uses a perfect mixture of will, humor, and imagination to protect his son f...", "director": "Roberto Benigni", "poster": "https://m.media-amazon.com/images/M/MV5BYmJmM2Q4NmMtYThmNC00ZjRlLWEyZmItZTIwOTBlZDQ3NTQ1XkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "The Intouchables", "year": "2011", "rating": 8.5, "genre": "Biography, Comedy, Drama", "overview": "After he becomes a quadriplegic from a paragliding accident, an aristocrat hires a young man from the projects to be his caregiver.", "director": "Olivier Nakache", "poster": "https://m.media-amazon.com/images/M/MV5BMTYxNDA3MDQwNl5BMl5BanBnXkFtZTcwNTU4Mzc1Nw@@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "The Pianist", "year": "2002", "rating": 8.5, "genre": "Biography, Drama, Music", "overview": "A Polish Jewish musician struggles to survive the destruction of the Warsaw ghetto of World War II.", "director": "Roman Polanski", "poster": "https://m.media-amazon.com/images/M/MV5BOWRiZDIxZjktMTA1NC00MDQ2LWEzMjUtMTliZmY3NjQ3ODJiXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "Nuovo Cinema Paradiso", "year": "1988", "rating": 8.5, "genre": "Drama, Romance", "overview": "A filmmaker recalls his childhood when falling in love with the pictures at the cinema of his home village and forms a deep friendship with the cinema's project...", "director": "Giuseppe Tornatore", "poster": "https://m.media-amazon.com/images/M/MV5BM2FhYjEyYmYtMDI1Yy00YTdlLWI2NWQtYmEzNzAxOGY1NjY2XkEyXkFqcGdeQXVyNTA3NTIyNDg@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "City Lights", "year": "1931", "rating": 8.5, "genre": "Comedy, Drama, Romance", "overview": "With the aid of a wealthy erratic tippler, a dewy-eyed tramp who has fallen in love with a sightless flower girl accumulates money to be able to help her medica...", "director": "Charles Chaplin", "poster": "https://m.media-amazon.com/images/M/MV5BY2I4MmM1N2EtM2YzOS00OWUzLTkzYzctNDc5NDg2N2IyODJmXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "Dangal", "year": "2016", "rating": 8.4, "genre": "Action, Biography, Drama", "overview": "Former wrestler Mahavir Singh Phogat and his two wrestler daughters struggle towards glory at the Commonwealth Games in the face of societal oppression.", "director": "Nitesh Tiwari", "poster": "https://m.media-amazon.com/images/M/MV5BMTQ4MzQzMzM2Nl5BMl5BanBnXkFtZTgwMTQ1NzU3MDI@._V1_UX400_CR0,0,400,600.jpg", "sadness": 4}, {"title": "Schindler's List", "year": "1993", "rating": 8.9, "genre": "Biography, Drama, History", "overview": "In German-occupied Poland during World War II, industrialist Oskar Schindler gradually becomes concerned for his Jewish workforce after witnessing their persecu...", "director": "Steven Spielberg", "poster": "https://m.media-amazon.com/images/M/MV5BNDE4OTMxMTctNmRhYy00NWE2LTg3YzItYTk3M2UwOTU5Njg4XkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Hamilton", "year": "2020", "rating": 8.6, "genre": "Biography, Drama, History", "overview": "The real life of one of America's foremost founding fathers and first Secretary of the Treasury, Alexander Hamilton. Captured live on Broadway from the Richard ...", "director": "Thomas Kail", "poster": "https://m.media-amazon.com/images/M/MV5BNjViNWRjYWEtZTI0NC00N2E3LTk0NGQtMjY4NTM3OGNkZjY0XkEyXkFqcGdeQXVyMjUxMTY3ODM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Saving Private Ryan", "year": "1998", "rating": 8.6, "genre": "Drama, War", "overview": "Following the Normandy Landings, a group of U.S. soldiers go behind enemy lines to retrieve a paratrooper whose brothers have been killed in action.", "director": "Steven Spielberg", "poster": "https://m.media-amazon.com/images/M/MV5BZjhkMDM4MWItZTVjOC00ZDRhLThmYTAtM2I5NzBmNmNlMzI1XkEyXkFqcGdeQXVyNDYyMDk5MTU@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Hotaru no haka", "year": "1988", "rating": 8.5, "genre": "Animation, Drama, War", "overview": "A young boy and his little sister struggle to survive in Japan during World War II.", "director": "Isao Takahata", "poster": "https://m.media-amazon.com/images/M/MV5BZmY2NjUzNDQtNTgxNC00M2Q4LTljOWQtMjNjNDBjNWUxNmJlXkEyXkFqcGdeQXVyNTA4NzY1MzY@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Casablanca", "year": "1942", "rating": 8.5, "genre": "Drama, Romance, War", "overview": "A cynical expatriate American cafe owner struggles to decide whether or not to help his former lover and her fugitive husband escape the Nazis in French Morocco...", "director": "Michael Curtiz", "poster": "https://m.media-amazon.com/images/M/MV5BY2IzZGY2YmEtYzljNS00NTM5LTgwMzUtMzM1NjQ4NGI0OTk0XkEyXkFqcGdeQXVyNDYyMDk5MTU@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Ayla: The Daughter of War", "year": "2017", "rating": 8.4, "genre": "Biography, Drama, History", "overview": "In 1950, amid-st the ravages of the Korean War, Sergeant S\u00fcleyman stumbles upon a half-frozen little girl, with no parents and no help in sight. Frantic, scared...", "director": "Can Ulkay", "poster": "https://m.media-amazon.com/images/M/MV5BNWJhMDlmZGUtYzcxNS00NDRiLWIwNjktNDY1Mjg3ZjBkYzY0XkEyXkFqcGdeQXVyMTU4MjUwMjI@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Apocalypse Now", "year": "1979", "rating": 8.4, "genre": "Drama, Mystery, War", "overview": "A U.S. Army officer serving in Vietnam is tasked with assassinating a renegade Special Forces Colonel who sees himself as a god.", "director": "Francis Ford Coppola", "poster": "https://m.media-amazon.com/images/M/MV5BMDdhODg0MjYtYzBiOS00ZmI5LWEwZGYtZDEyNDU4MmQyNzFkXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}, {"title": "Paths of Glory", "year": "1957", "rating": 8.4, "genre": "Drama, War", "overview": "After refusing to attack an enemy position, a general accuses the soldiers of cowardice and their commanding officer must defend them.", "director": "Stanley Kubrick", "poster": "https://m.media-amazon.com/images/M/MV5BNjViMmRkOTEtM2ViOS00ODg0LWJhYWEtNTBlOGQxNDczOGY3XkEyXkFqcGdeQXVyMDI2NDg0NQ@@._V1_UX400_CR0,0,400,600.jpg", "sadness": 5}];
+
+const MOODS = {
+  1: { emoji: '😊', name: 'Feeling Good', desc: "You're in a great mood! A light adventure or action film sounds perfect.", color: '#3B82F6', orb: 'rgba(59,130,246,0.18)' },
+  2: { emoji: '🙂', name: 'Pretty Okay', desc: "Not bad, not great. A bittersweet comedy-drama sounds perfect right now.", color: '#8B5CF6', orb: 'rgba(139,92,246,0.18)' },
+  3: { emoji: '😐', name: 'Kinda Meh', desc: "You're somewhere in the middle. A quiet drama will hit just right tonight.", color: '#EC4899', orb: 'rgba(236,72,153,0.18)' },
+  4: { emoji: '😔', name: 'Pretty Sad', desc: "Something's weighing on you. A deeply emotional film might be exactly what you need.", color: '#F59E0B', orb: 'rgba(245,158,11,0.18)' },
+  5: { emoji: '💀', name: 'Completely Devastated', desc: "You want to feel something. These films will wreck you — in the best way.", color: '#EF4444', orb: 'rgba(239,68,68,0.18)' }
+};
+
+const INSIGHTS = {
+  1: "📊 <strong>Data insight:</strong> Feel-good movies in the IMDb top 1000 average a rating of <strong>8.1</strong> — still excellent, but the lowest of any tier.",
+  2: "📊 <strong>Data insight:</strong> Comedy-dramas average <strong>8.2</strong> on IMDb. Mixing laughs with emotion resonates strongly with audiences.",
+  3: "📊 <strong>Data insight:</strong> Pure dramas average <strong>8.3</strong> on IMDb — emotional depth consistently earns critical respect.",
+  4: "📊 <strong>Data insight:</strong> Romance and biography dramas average <strong>8.4</strong> on IMDb. The more personal the story, the higher it rates.",
+  5: "📊 <strong>Data insight:</strong> War and history dramas average <strong>8.6</strong> on IMDb — the highest of all tiers. <strong>The data confirms it: sadder movies genuinely rate better.</strong>"
+};
+
+const REDDIT_QUOTES = {
+  "The Shawshank Redemption": '"I don\'t think I\'ve ever rooted for characters more. Cried like a baby at the end." — r/movies',
+  "Schindler\'s List": '"Watched it once. Will never forget it. The color red still makes me emotional." — r/TrueFilm',
+  "The Green Mile": '"I was sobbing by the end. My roommate thought something was actually wrong with me." — r/movies',
+  "Forrest Gump": '"Jenny\'s storyline absolutely destroyed me. Still think about it years later." — r/movies',
+  "The Pianist": '"Walked out of the cinema in complete silence. Everyone did. Nothing needed to be said." — r/TrueFilm',
+  "Grave of the Fireflies": '"Genuinely the saddest film ever made. I couldn\'t eat for hours afterward." — r/anime',
+  "Marriage Story": '"Felt like watching my parents divorce all over again. Masterpiece." — r/movies',
+  "Atonement": '"That tracking shot alone made me cry. The ending completely broke me." — r/TrueFilm',
+  "Manchester by the Sea": '"The most realistic portrayal of grief I\'ve ever seen. Absolutely gutting." — r/movies',
+  "Requiem for a Dream": '"I felt genuinely depressed for days after watching this. Masterpiece but be warned." — r/TrueFilm',
+  "default": '"This film stayed with me for days. One of those that changes how you see the world." — r/movies'
+};
+
+const slider = document.getElementById('moodSlider');
+
+function updateMood(val) {
+  const mood = MOODS[val];
+  document.getElementById('moodEmoji').textContent = mood.emoji;
+  document.getElementById('moodName').textContent = mood.name;
+  document.getElementById('moodName').style.color = mood.color;
+  document.getElementById('moodDesc').textContent = mood.desc;
+  document.getElementById('moodDisplay').style.borderColor = mood.color + '55';
+  document.getElementById('findBtn').style.background = mood.color;
+  document.getElementById('findBtn').style.boxShadow = 'none';
+  slider.style.setProperty('--thumb-color', mood.color);
+  const pct = ((val - 1) / 4) * 100;
+  slider.style.background = `linear-gradient(to right, ${mood.color} ${pct}%, rgba(255,255,255,0.08) ${pct}%)`;
+  document.getElementById('orb1').style.background = mood.orb;
+  document.getElementById('orb1').style.opacity = 1;
+  document.getElementById('orb2').style.background = mood.orb;
+  document.getElementById('orb2').style.opacity = 1;
+  document.documentElement.style.setProperty('--active-color', mood.color);
+}
+
+slider.addEventListener('input', () => updateMood(parseInt(slider.value)));
+updateMood(3);
+
+document.getElementById('findBtn').addEventListener('click', () => {
+  const val = parseInt(slider.value);
+  const filtered = MOVIES.filter(m => m.sadness === val);
+  const mood = MOODS[val];
+
+  document.getElementById('insightText').innerHTML = INSIGHTS[val];
+  document.getElementById('insightBar').classList.add('visible');
+
+  const grid = document.getElementById('movieGrid');
+  grid.innerHTML = '';
+
+  filtered.forEach((movie, i) => {
+    const card = document.createElement('div');
+    card.className = 'movie-card';
+    card.style.animationDelay = (i * 0.07) + 's';
+
+    card.innerHTML = `
+      <div class="poster-wrap">
+        <img class="movie-poster" 
+             src="${movie.poster}" 
+             alt="${movie.title}"
+             loading="lazy"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="poster-fallback" style="display:none">
+          <span class="film-icon">🎬</span>
+          <span>${movie.title}</span>
+        </div>
+      </div>
+      <div class="movie-info">
+        <div class="movie-title">${movie.title}</div>
+        <div class="movie-meta">
+          <span class="movie-year">${movie.year}</span>
+          <span class="movie-rating">⭐ ${movie.rating}</span>
+        </div>
+        <div class="movie-genre">${movie.genre}</div>
+      </div>
+    `;
+    card.addEventListener('click', () => openModal(movie));
+    grid.appendChild(card);
+  });
+
+  document.getElementById('resultsTitle').textContent = `Movies for when you're "${mood.name}"`;
+  document.getElementById('resultsCount').textContent = filtered.length + ' FILMS FOUND';
+  document.getElementById('resultsSection').classList.add('visible');
+  renderChart(val);
+  document.getElementById('chartSection').classList.add('visible');
+  setTimeout(() => document.getElementById('insightBar').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+});
+
+function openModal(movie) {
+  const reddit = REDDIT_QUOTES[movie.title] || REDDIT_QUOTES['default'];
+  const poster = document.getElementById('modalPoster');
+  poster.src = movie.poster;
+  poster.onerror = function() { this.style.display = 'none'; };
+  document.getElementById('modalGenre').textContent = movie.genre;
+  document.getElementById('modalTitle').textContent = movie.title;
+  document.getElementById('modalMeta').textContent = movie.year + ' · Dir. ' + movie.director;
+  document.getElementById('modalRating').innerHTML = '⭐ ' + movie.rating + ' IMDb';
+  document.getElementById('modalOverview').textContent = movie.overview;
+  document.getElementById('modalReddit').textContent = reddit;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+document.getElementById('modalClose').addEventListener('click', () => document.getElementById('modalOverlay').classList.remove('open'));
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('open'); });
+
+function renderChart(activeTier) {
+  const data = {
+    1: { label: "😊 Feeling Good", avg: 8.1, color: '#3B82F6' },
+    2: { label: "🙂 Pretty Okay", avg: 8.2, color: '#8B5CF6' },
+    3: { label: "😐 Kinda Meh", avg: 8.3, color: '#EC4899' },
+    4: { label: "😔 Pretty Sad", avg: 8.4, color: '#F59E0B' },
+    5: { label: "💀 Devastated", avg: 8.6, color: '#EF4444' }
+  };
+  const chart = document.getElementById('barChart');
+  chart.innerHTML = '';
+  Object.entries(data).forEach(([tier, d]) => {
+    const pct = ((d.avg - 7.8) / (8.6 - 7.8)) * 100;
+    const isActive = parseInt(tier) === activeTier;
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label">${d.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="background:${isActive ? d.color : d.color + '55'}; width:0%">
+          <span class="bar-value">${d.avg}</span>
+        </div>
+      </div>
+    `;
+    chart.appendChild(row);
+    setTimeout(() => row.querySelector('.bar-fill').style.width = pct + '%', 150);
+  });
+}
+</script>
+</body>
+</html>
